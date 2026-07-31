@@ -1,5 +1,9 @@
 <div align="center">
 
+<p>
+  <img src="docs/final-logo.png" alt="Auto Modelling Logo" width="240">
+</p>
+
 <h1>Auto Modelling</h1>
 
 <p><strong>把数学建模竞赛流程变成可复用、可交接、可验证的中文 Skill</strong></p>
