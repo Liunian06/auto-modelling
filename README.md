@@ -58,24 +58,82 @@ Auto Modelling 不是一组零散提示词，而是一套面向不同 LLM 的统
 
 ## 安装
 
-下载或克隆本仓库后，在仓库根目录执行。
+### 使用 AI Agent 安装
 
-### Windows PowerShell
+把下面的指令完整发送给能够执行 Git 和本地文件操作的 AI Agent：
+
+~~~text
+请安装 Auto Modelling 数学建模竞赛 Skill：
+
+1. 使用 Git 克隆 https://github.com/Liunian06/auto-modelling.git 。如果本地已有该仓库，先确认工作区没有未提交修改，再拉取最新的 main 分支；不要覆盖用户修改。
+2. Skill 源目录是仓库中的 .codex/skills/math-modeling-competition/，不要把整个仓库当作一个 Skill 安装。
+3. 先读取该目录下的 SKILL.md，确认 Skill 名称为 math-modeling-competition，并检查 references/、scripts/ 以及它们被引用的文件是否完整。
+4. 确定本机 Codex Skill 目录。优先使用 $CODEX_HOME/skills；如果没有设置 CODEX_HOME，则 Windows 使用 %USERPROFILE%/.codex/skills，macOS/Linux 使用 ~/.codex/skills。
+5. 将整个 math-modeling-competition 目录复制到 Skill 目录中，最终入口应为 <Skill目录>/math-modeling-competition/SKILL.md。
+6. 如果目标目录已经存在，不要直接覆盖。先比较现有版本与仓库版本，并询问用户是更新、备份后替换，还是取消安装。
+7. 安装后检查 SKILL.md、6 个 references Markdown 文件和 scripts/workspace_manager.py 均存在，再告诉用户重新开始一个 Codex 任务以加载 Skill。
+8. 不要在 Skill 安装目录或本仓库中创建比赛 data。比赛数据只能放在用户明确指定的工作目录下。
+~~~
+
+Agent 安装时需要识别的源目录结构：
+
+~~~text
+auto-modelling/
+└── .codex/
+    └── skills/
+        └── math-modeling-competition/  <- 复制这个目录
+            ├── SKILL.md                <- Skill 入口
+            ├── references/
+            └── scripts/
+~~~
+
+### 人工安装
+
+#### Windows PowerShell
+
+克隆仓库并进入项目目录：
 
 ~~~powershell
-$target = Join-Path $env:USERPROFILE ".codex\skills"
-New-Item -ItemType Directory -Force $target | Out-Null
-Copy-Item -Recurse -Force ".codex\skills\math-modeling-competition" $target
+git clone https://github.com/Liunian06/auto-modelling.git
+Set-Location auto-modelling
 ~~~
 
-### macOS / Linux
+复制 Skill；如果已经安装，命令会停止并提示先处理旧版本：
+
+~~~powershell
+$skillsRoot = if ($env:CODEX_HOME) {
+    Join-Path $env:CODEX_HOME "skills"
+} else {
+    Join-Path $env:USERPROFILE ".codex\skills"
+}
+$source = Join-Path (Get-Location) ".codex\skills\math-modeling-competition"
+$destination = Join-Path $skillsRoot "math-modeling-competition"
+
+New-Item -ItemType Directory -Force $skillsRoot | Out-Null
+if (Test-Path $destination) {
+    throw "目标 Skill 已存在：$destination。请先备份、删除或改用更新流程。"
+}
+Copy-Item -Recurse $source $destination
+Test-Path (Join-Path $destination "SKILL.md")
+~~~
+
+最后一行应输出 `True`。
+
+#### macOS / Linux
 
 ~~~bash
-mkdir -p ~/.codex/skills
-cp -R .codex/skills/math-modeling-competition ~/.codex/skills/
+git clone https://github.com/Liunian06/auto-modelling.git
+cd auto-modelling
+
+skills_root="${CODEX_HOME:-$HOME/.codex}/skills"
+destination="$skills_root/math-modeling-competition"
+test ! -e "$destination" || { echo "目标 Skill 已存在：$destination"; exit 1; }
+mkdir -p "$skills_root"
+cp -R .codex/skills/math-modeling-competition "$skills_root/"
+test -f "$destination/SKILL.md" && echo "安装成功"
 ~~~
 
-安装后重新开始一个 Codex 任务，并直接描述建模需求：
+安装完成后重新开始一个 Codex 任务，并直接描述建模需求：
 
 ~~~text
 使用数学建模竞赛 Skill，帮我准备 2025 年国赛 A 题。
@@ -83,6 +141,29 @@ cp -R .codex/skills/math-modeling-competition ~/.codex/skills/
 ~~~
 
 用户未提供工作目录时，Skill 会先询问；比赛数据不会保存在 Skill 安装目录中。
+
+## Data 文件结构
+
+比赛资料不存放在本仓库或 Skill 安装目录中，而是存放在用户明确指定的工作目录下。所有比赛统一使用以下结构：
+
+~~~text
+<用户指定的工作目录>/
+└── data/
+    └── 202509-国赛CUMCM2025/
+        └── 202509-国赛CUMCM2025-A题/
+            ├── 赛题/                  # 官方赛题、附件、赛题整理 Markdown
+            ├── 参考论文/              # 参考论文、单篇分析、横向比较
+            ├── 工作区/
+            │   ├── 数据/              # 原始、清洗和中间数据
+            │   ├── 代码/              # 预处理、建模、实验和出图代码
+            │   ├── 结果/              # 实际运行产生的结果、预测数据和指标
+            │   ├── 图表/              # 分析和论文使用的图表
+            │   ├── 日志/              # 进度、决策、阻塞和 Agent 交接记录
+            │   └── 论文/              # UTF-8 LaTeX、.bib、模板、PDF
+            └── 复盘/                  # 赛后复盘和可复用经验
+~~~
+
+比赛目录使用 `{YYYYMM}-{中文简称}{英文标识}{届次年份}` 命名，例如 `202509-国赛CUMCM2025`、`202502-美赛MCM2025`；赛题目录在比赛目录名后追加题号，例如 `202509-国赛CUMCM2025-A题`。`工作区/结果/` 只保存代码实际运行产生的输出，`工作区/日志/` 专门保存过程和交接信息，过程性描述统一使用 Markdown，正式论文统一使用 UTF-8 LaTeX 并保留成功编译的 PDF。
 
 ## Skill 架构
 
